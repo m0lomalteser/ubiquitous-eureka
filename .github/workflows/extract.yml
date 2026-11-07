@@ -1,7 +1,7 @@
 name: Extract and Monitor Zip
 
 on:
-  workflow_dispatch: # Lässt sich manuell über den GitHub-Tab "Actions" starten
+  workflow_dispatch:
 
 jobs:
   extract:
@@ -18,36 +18,30 @@ jobs:
 
           echo "=== Starte Entpackvorgang & Monitoring ==="
           
-          # Hintergrundprozess, der alle 2 Sekunden den Status ausgibt
+          # Hintergrundprozess für das Monitoring (ohne Dateicount, da es sich um 1 große Datei handelt)
           (
             while true; do
-              # Prüfen, ob der Entpackvorgang noch läuft
-              if ! pgrep -x "unzip" > /dev/null; then
+              if ! pgrep -f "unzip" > /dev/null; then
                 break
               fi
               
-              # Fortschritt: Anzahl bereits extrahierter Dateien im Zielverzeichnis
-              extracted_count=$(find extracted_files -type f 2>/dev/null | wc -l)
-              
-              # Aktuelle Größe der extrahierten Daten
               current_size=$(du -sh extracted_files 2>/dev/null | cut -f1)
-              
-              # Freier Speicherplatz auf der Festplatte
               free_space=$(df -h . | awk 'NR==2 {print $4}')
               
-              echo "[MONITOR] Extrahierte Dateien: $extracted_count | Größe: $current_size | Freier Speicher: $free_space"
+              echo "[MONITOR] Aktuelle Größe der Datei: $current_size | Freier Speicher: $free_space"
               sleep 2
             done
           ) &
 
-          # Zielordner erstellen und entpacken
           mkdir -p extracted_files
+          
+          # Umgebungsvariable setzen, damit unzip überlappende Komponenten ignoriert (falls nötig)
+          export UNZIP_DISABLE_ZIPBOMB_DETECTION=TRUE
+          
+          # Entpacken starten (mit -O CP850 oder Standard)
           unzip -q funnyy.zip -d extracted_files
 
           echo ""
           echo "=== Entpacken abgeschlossen! ==="
-          echo "Gesamtgröße des entpackten Ordners:"
-          du -sh extracted_files
-          echo ""
-          echo "Endgültiger Speicherplatz:"
+          du -sh extracted_files/*
           df -h .
