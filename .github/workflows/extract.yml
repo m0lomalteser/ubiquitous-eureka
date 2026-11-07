@@ -1,0 +1,53 @@
+name: Extract and Monitor Zip
+
+on:
+  workflow_dispatch: # Lässt sich manuell über den GitHub-Tab "Actions" starten
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract zip and monitor progress
+        run: |
+          echo "=== Start: System-Speicherplatz vor dem Entpacken ==="
+          df -h .
+          echo ""
+
+          echo "=== Starte Entpackvorgang & Monitoring ==="
+          
+          # Hintergrundprozess, der alle 2 Sekunden den Status ausgibt
+          (
+            while true; do
+              # Prüfen, ob der Entpackvorgang noch läuft
+              if ! pgrep -x "unzip" > /dev/null; then
+                break
+              fi
+              
+              # Fortschritt: Anzahl bereits extrahierter Dateien im Zielverzeichnis
+              extracted_count=$(find extracted_files -type f 2>/dev/null | wc -l)
+              
+              # Aktuelle Größe der extrahierten Daten
+              current_size=$(du -sh extracted_files 2>/dev/null | cut -f1)
+              
+              # Freier Speicherplatz auf der Festplatte
+              free_space=$(df -h . | awk 'NR==2 {print $4}')
+              
+              echo "[MONITOR] Extrahierte Dateien: $extracted_count | Größe: $current_size | Freier Speicher: $free_space"
+              sleep 2
+            done
+          ) &
+
+          # Zielordner erstellen und entpacken
+          mkdir -p extracted_files
+          unzip -q funnyy.zip -d extracted_files
+
+          echo ""
+          echo "=== Entpacken abgeschlossen! ==="
+          echo "Gesamtgröße des entpackten Ordners:"
+          du -sh extracted_files
+          echo ""
+          echo "Endgültiger Speicherplatz:"
+          df -h .
