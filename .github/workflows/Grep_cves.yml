@@ -1,0 +1,37 @@
+name: Apple CVE PoC Checker
+
+on:
+  workflow_dispatch: # Ermöglicht den manuellen Start im GitHub-Tab "Actions"
+  schedule:
+    - cron: '0 8 * * 1' # Läuft optional jeden Montag um 08:00 Uhr automatisch
+
+jobs:
+  check-cves:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Abhängigkeiten installieren
+        run: |
+          pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: CVE-Skript ausführen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python cve.py
+
+      - name: Ergebnis-Datei hochladen (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cve-results
+          path: cve_results.txt
